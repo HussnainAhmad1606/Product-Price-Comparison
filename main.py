@@ -19,6 +19,8 @@ root = Tk()
 root.title("Product Price Comparison")
 root.geometry("600x600")
 search = StringVar()
+state = StringVar()
+state.set("Ready")
 
 def USDtoPKR(amount):
 	url = f"https://api.apilayer.com/exchangerates_data/convert?to=PKR&from=USD&amount={amount}"
@@ -46,10 +48,15 @@ def getDetailsAmazon():
 	options = Options()
 	options.headless = True
 	print("Search Started")
+	state.set(f"Searching {search.get()} on Amazon")
+
 	driver = webdriver.Firefox(options=options, executable_path=r'geckodriver.exe')
 	driver.get(amazonURL)
 	print("Search End")
+	state.set(f"Searched Finished")
+
 	print("Finding Elements")
+	state.set(f"Finding Products....")
 
 	# Finding Product title, price and photo
 	title = driver.find_element(By.CSS_SELECTOR, ".s-title-instructions-style h2 a span")
@@ -59,7 +66,10 @@ def getDetailsAmazon():
 	
 	photo = driver.find_element(By.CSS_SELECTOR, f".aok-relative span a div img")
 	print("Elements Found")	
+	state.set(f"Products Found")
+
 	print("Showing Elements on UI")	
+	state.set(f"Showing Products")
 
 	# Clearing all previous items from array
 	amazonProductArr.clear()
@@ -74,7 +84,9 @@ def getDetailsAmazon():
 
 	amazonProductArr.append(photo.get_attribute("src"))
 
-	print("Elements Appear on UI")	
+	print("Amazon Products Done")	
+	state.set(f"Amazon Products Done")
+
 	print(amazonProductArr)
 	# Checking if no product found
 	assert "No results found." not in driver.page_source
@@ -93,9 +105,14 @@ def getDetailsDaraz():
 	options = Options()
 	options.headless = True
 	print("Search Started")
+	state.set(f"Searching {search.get()} on DARAZ")
+
 	driver = webdriver.Firefox(options=options, executable_path=r'geckodriver.exe')
 	driver.get(darazURL)
 	print("Search End")
+	state.set(f"Searching End")
+	state.set(f"Finding Products on Daraz")
+
 	print("Finding Elements")
 
 	# Finding Product title, price and photo
@@ -107,7 +124,9 @@ def getDetailsDaraz():
 	link = div.get_attribute("href")
 	title = div.text
 	print("Elements Found")	
-	print("Showing Elements on UI")	
+	state.set(f"Products found on DARAZ")
+
+	print("Showing Daraz Products")	
 
 	# Clearing all previous items from array
 	darazProductArr.clear()
@@ -119,6 +138,8 @@ def getDetailsDaraz():
 	darazProductArr.append(photo.get_attribute("src"))
 
 	print("Elements Appear on UI")	
+	state.set(f"Daraz Products Showed")
+
 
 	# Checking if no product found
 	assert "No results found." not in driver.page_source
@@ -199,16 +220,18 @@ def showDarazProducts():
 	raw_data.close()
 
 	photo = ImageTk.PhotoImage(data=u)
-	label1 = Label(darazProductFrame, image=photo, width=600, height=600)
+	label1 = Label(darazProductFrame, image=photo, width=300, height=300)
 	label1.image = photo
-	label1.pack(side=RIGHT)
+	label1.pack(side=RIGHT, pady=100)
 
 	print("DONE")
 
 # Main function that will run when user enter product name and click on SEARCH PRODUCT
 def getResult():
-	# getDetailsDaraz()
+	getDetailsDaraz()
 	getDetailsAmazon()
+	state.set(f"Ready")
+
 
 
 	
@@ -236,5 +259,9 @@ amazonProductFrame = Frame(root)
 amazonProductFrame.pack(side=LEFT)
 
 
-productFrame.pack(side=TOP)
+productFrame.pack(side=TOP, anchor=CENTER)
+
+
+statusBar = Label(root, textvariable=state, relief=SUNKEN)
+statusBar.pack(fill=X, side=BOTTOM)
 root.mainloop()
