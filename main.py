@@ -1,20 +1,87 @@
 import requests
+import json
 from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 import webbrowser
 from tkinter import *
 import urllib
+import math
 from PIL import ImageTk, Image
 
-# Array for storing daraz product after retrieving it from daraz website
+# Array for storing Daraz product after retrieving it from Daraz website
 darazProductArr = []
 
+# Array for storing Amazon product after retrieving it from Amazon website
+amazonProductArr = []
 
 root = Tk()
 root.title("Product Price Comparison")
 root.geometry("600x600")
 search = StringVar()
+
+def USDtoPKR(amount):
+	url = f"https://api.apilayer.com/exchangerates_data/convert?to=PKR&from=USD&amount={amount}"
+	payload = {}
+	headers= {
+	  "apikey": "3s0PboHwgdGYDTykizxdJrH2f0osJut0"
+	}
+	response = requests.request("GET", url, headers=headers, data = payload)
+
+	status_code = response.status_code
+	result = response.text
+
+	# converting string to dictionary
+	r = json.loads(result)
+	return f"Rs. {math.trunc(r['result'])}"
+
+# Function to get products from Amazon
+def getDetailsAmazon():
+	# title = document.querySelectorAll(".s-title-instructions-style h2 a span")
+	# price = .a-price .a-offscreen
+	# link = .aok-relative span a
+	# photo = .aok-relative span a div img
+	amazonURL = f"https://www.amazon.com/s?k={search.get()}"
+	# Entering options to not open the browser just get the data without opening the browser
+	options = Options()
+	options.headless = True
+	print("Search Started")
+	driver = webdriver.Firefox(options=options, executable_path=r'geckodriver.exe')
+	driver.get(amazonURL)
+	print("Search End")
+	print("Finding Elements")
+
+	# Finding Product title, price and photo
+	title = driver.find_element(By.CSS_SELECTOR, ".s-title-instructions-style h2 a span")
+	price = driver.find_element(By.CSS_SELECTOR, ".a-price .a-offscreen")
+	print(price)
+	link = driver.find_element(By.CSS_SELECTOR, f".aok-relative span a").get_attribute("href")
+	
+	photo = driver.find_element(By.CSS_SELECTOR, f".aok-relative span a div img")
+	print("Elements Found")	
+	print("Showing Elements on UI")	
+
+	# Clearing all previous items from array
+	amazonProductArr.clear()
+
+	# Adding prouduct to array
+	amazonProductArr.append(link)
+
+	amazonProductArr.append(title.text)
+	pkrPrice = USDtoPKR(float(price.get_attribute("textContent")[1:]))
+	amazonProductArr.append(pkrPrice)
+
+
+	amazonProductArr.append(photo.get_attribute("src"))
+
+	print("Elements Appear on UI")	
+	print(amazonProductArr)
+	# Checking if no product found
+	assert "No results found." not in driver.page_source
+	driver.close()
+
+	showAmazonProducts()
+
 
 # Function to get product of name entered by the user
 def getDetailsDaraz():
@@ -57,6 +124,8 @@ def getDetailsDaraz():
 	assert "No results found." not in driver.page_source
 	driver.close()
 
+	showDarazProducts()
+
 
 # Function to add spacing to text
 def addSpacing(text):
@@ -78,9 +147,37 @@ def deleteFrame(frame):
 
 	print("Items Deleted")
 
-# Main function that will run when user enter product name and click on SEARCH PRODUCT
-def getResult():
-	getDetailsDaraz()
+
+def showAmazonProducts():
+	deleteFrame(amazonProductFrame)
+	global amazonProductArr
+	# Showing the Daraz product on UI
+	darazTitle = Label(amazonProductFrame, text="AMAZON", font=("Calibri", 20, "bold"))
+	darazTitle.pack()
+	darazProductName = Label(amazonProductFrame, text=addSpacing(amazonProductArr[1]))  
+	darazProductName.pack()
+
+	darazPriceLabel = Label(amazonProductFrame, text=amazonProductArr[2])
+	darazPriceLabel.pack()
+
+	darazLinkBtn = Button(amazonProductFrame, text="Open in AMAZON", command=lambda: webbrowser.open(amazonProductArr[0]))
+	darazLinkBtn.pack()
+
+
+	# Showing Daraz product photo on UI
+	raw_data = urllib.request.urlopen(amazonProductArr[3])
+	u = raw_data.read()
+	raw_data.close()
+
+	photo = ImageTk.PhotoImage(data=u)
+	label1 = Label(amazonProductFrame, image=photo, width=600, height=600)
+	label1.image = photo
+	label1.pack(side=RIGHT)
+
+	print("Amazon DONE")
+
+
+def showDarazProducts():
 	deleteFrame(darazProductFrame)
 	global darazProductArr
 	# Showing the Daraz product on UI
@@ -108,6 +205,14 @@ def getResult():
 
 	print("DONE")
 
+# Main function that will run when user enter product name and click on SEARCH PRODUCT
+def getResult():
+	# getDetailsDaraz()
+	getDetailsAmazon()
+
+
+	
+
 
 # Search Entry for entering product name on UI
 label = Label(root, text="Enter Search Result: ")
@@ -126,5 +231,10 @@ productFrame = Frame(root, relief=SUNKEN)
 # Daraz Frame where Daraz product will be shown
 darazProductFrame = Frame(root)
 darazProductFrame.pack(side=LEFT)
+
+amazonProductFrame = Frame(root)
+amazonProductFrame.pack(side=LEFT)
+
+
 productFrame.pack(side=TOP)
 root.mainloop()
